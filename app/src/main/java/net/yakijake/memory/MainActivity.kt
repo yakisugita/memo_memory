@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+//                    Greeting("Android")
                     Test()
                 }
             }
@@ -73,12 +73,12 @@ fun Test(modifier: Modifier = Modifier) {
                     if (scale < 1) scale = 1f
                     if (scale > 10) scale = 10f
                     offset += pan
-                    CustomShape = GenericShape { size, layoutDirection ->
-                        moveTo(0f, 0f)
-                        lineTo((size.width*sliderPosition)+offset.x+(sliderPosition-0.5f)*scale*920, 0f)
-                        lineTo((size.width*sliderPosition)+offset.x+(sliderPosition-0.5f)*scale*920, size.height)
-                        lineTo(0f, size.height)
-                    }
+//                    CustomShape = GenericShape { size, layoutDirection ->
+//                        moveTo(0f, 0f)
+//                        lineTo(size.width*sliderPosition, 0f)
+//                        lineTo(size.width*sliderPosition, size.height)
+//                        lineTo(0f, size.height)
+//                    }
                 }
             }
             .graphicsLayer {
@@ -112,19 +112,7 @@ fun Test(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(all = 8.dp)
         )
         Text(
-            text = (offset.x).toString(),
-            modifier = Modifier.padding(all = 8.dp)
-        )
-        Text(
-            text = (scale).toString(),
-            modifier = Modifier.padding(all = 8.dp)
-        )
-        Text(
-            text = (offset.x/scale).toString(),
-            modifier = Modifier.padding(all = 8.dp)
-        )
-        Text(
-            text = ((sliderPosition-0.5f)*scale).toString(),
+            text = "${offset.x} / $scale = ${(offset.x/scale)}",
             modifier = Modifier.padding(all = 8.dp)
         )
         Slider(
@@ -133,9 +121,8 @@ fun Test(modifier: Modifier = Modifier) {
                 sliderPosition = it
                 CustomShape = GenericShape { size, layoutDirection ->
                     moveTo(0f, 0f)
-//                    lineTo((size.width*sliderPosition)+(offset.x/scale), 0f)
-                    lineTo((size.width*sliderPosition)+offset.x+(sliderPosition-0.5f)*scale*920, 0f)
-                    lineTo((size.width*sliderPosition)+offset.x+(sliderPosition-0.5f)*scale*920, size.height)
+                    lineTo(size.width*sliderPosition, 0f)
+                    lineTo(size.width*sliderPosition, size.height)
                     lineTo(0f, size.height)
                 }
             }
