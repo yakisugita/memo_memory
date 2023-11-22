@@ -28,6 +28,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import net.yakijake.memory.ui.theme.MemoryTheme
 
 
@@ -42,7 +45,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
 //                    Greeting("Android")
-                    Test()
+//                    Test()
+                    SetNav()
                 }
             }
         }
@@ -61,6 +65,9 @@ fun Test(modifier: Modifier = Modifier) {
     var sliderPosition by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var scale by remember { mutableStateOf(2f) }
+    var zoom_ by remember { mutableStateOf(0f) }
+    var centeroid_ by remember { mutableStateOf(Offset.Zero) }
+    var pan_ by remember { mutableStateOf(Offset.Zero) }
     var CustomShape by remember { mutableStateOf(GenericShape { size, layoutDirection -> }) }
     Image(
         painter = painterResource(id = R.drawable.original),
@@ -68,11 +75,16 @@ fun Test(modifier: Modifier = Modifier) {
         contentScale = ContentScale.Fit,
         modifier = Modifier
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
+                detectTransformGestures (true) { centeroid, pan, zoom, _ ->
+
                     scale *= zoom
                     if (scale < 1) scale = 1f
                     if (scale > 10) scale = 10f
                     offset += pan
+
+                    pan_ = pan
+                    zoom_ = zoom
+                    centeroid_ = centeroid
 //                    CustomShape = GenericShape { size, layoutDirection ->
 //                        moveTo(0f, 0f)
 //                        lineTo(size.width*sliderPosition, 0f)
@@ -115,6 +127,10 @@ fun Test(modifier: Modifier = Modifier) {
             text = "${offset.x} / $scale = ${(offset.x/scale)}",
             modifier = Modifier.padding(all = 8.dp)
         )
+        Text(
+            text = "${centeroid_.x} , ${centeroid_.y}",
+            modifier = Modifier.padding(all = 8.dp)
+        )
         Slider(
             value = sliderPosition,
             onValueChange = {
@@ -129,12 +145,29 @@ fun Test(modifier: Modifier = Modifier) {
         )
     }
 }
+@Composable
+fun SetNav() {
+    val navController = rememberNavController()
+    NavHost(navController = navController, startDestination = "topContent") {
+//        composable("profile") { Test(/*...*/) }
+        composable("topContent") {
+            TopContent(navController = navController)
+        }
+        composable("compareContent") {
+            CompareContent(navController = navController)
+        }
+
+//        composable("friendslist") { FriendsList(/*...*/) }
+        /*...*/
+    }
+}
 
 @Preview(showBackground = true)
 @Composable
 fun GreetingPreview() {
     MemoryTheme {
         Greeting("Android")
-        Test()
+//        Test()
+        SetNav()
     }
 }
