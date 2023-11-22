@@ -5,7 +5,9 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -68,9 +70,15 @@ class TopFragment : Fragment() {
 fun TopContent(
     navController: NavController
 ) {
-    // content
-    Text(
-        text = "TopFragment",
-        modifier = Modifier.padding(all = 8.dp)
-    )
+    Column {
+        Text(
+            text = "TopFragment",
+            modifier = Modifier.padding(all = 8.dp)
+        )
+        Button(
+            onClick = {navController.navigate("compareContent")}
+        ) {
+            Text( text = "compareFragmentに遷移" )
+        }
+    }
 }
