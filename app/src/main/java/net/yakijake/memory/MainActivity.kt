@@ -1,15 +1,20 @@
 package net.yakijake.memory
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,12 +41,28 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import net.yakijake.memory.ui.theme.MemoryTheme
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("Memory_Log",filesDir.toString())
+        val path = filesDir.toString()
+
+        Log.d("Memory_Log_DirCheck","checking")
+
+        if (!File(path, "db").exists()) {
+            Files.createDirectory(Paths.get("$path/db"))
+            Log.d("Memory_Log_DirCheck","created db")
+        }
+        if (!File(path, "memo").exists()) {
+            Files.createDirectory(Paths.get("$path/memo"))
+            Log.d("Memory_Log_DirCheck","created memo")
+        }
+
         setContent {
             MemoryTheme {
                 // A surface container using the 'background' color from the theme
@@ -96,6 +118,29 @@ fun TopContent(
             onClick = {navController.navigate("compareContent")}
         ) {
             Text( text = "compareに遷移" )
+        }
+
+        val context = LocalContext.current
+        LazyColumn {
+            val path = context.filesDir.toString()
+
+            val dirlist = File("$path/memo").list()
+            dirlist.forEach {
+                if (File("$path/memo", it).isDirectory) {
+                    Log.d("Memory_Log_FileList", it)
+                }
+            }
+
+            items(dirlist) {
+                Text(
+                    text = it,
+                    modifier = Modifier
+                        .padding(all = 16.dp)
+                        .clickable {
+                            Log.d("Memory_Log_Click", it)
+                        }
+                )
+            }
         }
     }
 }
