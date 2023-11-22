@@ -206,7 +206,7 @@ fun Test(dirName : String, modifier: Modifier = Modifier) {
                 scaleX = scale
                 scaleY = scale
                 translationX = offset.x
-//                translationY = offset.y
+                translationY = offset.y
             }
     )
     Image(
@@ -224,7 +224,7 @@ fun Test(dirName : String, modifier: Modifier = Modifier) {
                 scaleX = scale
                 scaleY = scale
                 translationX = offset.x
-//                translationY = offset.y
+                translationY = offset.y
             }
     )
 
