@@ -1,6 +1,7 @@
 package net.yakijake.memory
 
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -37,9 +39,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import net.yakijake.memory.ui.theme.MemoryTheme
 import java.io.File
 import java.nio.file.Files
@@ -94,8 +98,20 @@ fun SetNav() {
         composable("topContent") {
             TopContent(navController = navController)
         }
-        composable("compareContent") {
-            CompareContent(navController = navController)
+        composable(
+            "compareContent/{dirName}",
+            arguments = listOf(
+                navArgument("dirName") {
+                    // 渡したい値の設定
+                    type = NavType.StringType
+                    nullable = false
+                    defaultValue = ""
+                }
+            )
+        ) {
+            // NavBackStackEntryから値を取得して、次の画面に渡す。
+            val dirName = it.arguments?.getString("dirName")
+            CompareContent(dirName!!,navController = navController)
         }
 
 //        composable("friendslist") { FriendsList(/*...*/) }
@@ -138,6 +154,7 @@ fun TopContent(
                         .padding(all = 16.dp)
                         .clickable {
                             Log.d("Memory_Log_Click", it)
+                            navController.navigate("compareContent/$it")
                         }
                 )
             }
@@ -147,7 +164,7 @@ fun TopContent(
 
 
 @Composable
-fun Test(modifier: Modifier = Modifier) {
+fun Test(dirName : String, modifier: Modifier = Modifier) {
     var sliderPosition by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var scale by remember { mutableStateOf(2f) }
@@ -155,8 +172,14 @@ fun Test(modifier: Modifier = Modifier) {
     var centeroid_ by remember { mutableStateOf(Offset.Zero) }
     var pan_ by remember { mutableStateOf(Offset.Zero) }
     var CustomShape by remember { mutableStateOf(GenericShape { size, layoutDirection -> }) }
+    Log.d("Memory_Log_Compare", dirName)
+    val context = LocalContext.current
+    val path = context.filesDir.toString()
+    val fileOriginal = File("$path/memo/$dirName/original.JPG")
+    val fileMask = File("$path/memo/$dirName/mask.JPG")
     Image(
-        painter = painterResource(id = R.drawable.original),
+//        painter = painterResource(id = R.drawable.original),
+        bitmap = BitmapFactory.decodeFile(fileOriginal.path).asImageBitmap(),
         contentDescription = "An Image",
         contentScale = ContentScale.Fit,
         modifier = Modifier
@@ -187,7 +210,8 @@ fun Test(modifier: Modifier = Modifier) {
             }
     )
     Image(
-        painter = painterResource(id = R.drawable.masked),
+//        painter = painterResource(id = R.drawable.masked),
+        bitmap = BitmapFactory.decodeFile(fileMask.path).asImageBitmap(),
         contentDescription = "An Image",
         contentScale = ContentScale.Fit,
         modifier = Modifier
@@ -234,6 +258,7 @@ fun Test(modifier: Modifier = Modifier) {
 
 @Composable
 fun CompareContent(
+    dirName : String,
     navController: NavController
 ) {
     // content
@@ -241,7 +266,7 @@ fun CompareContent(
         text = "Compare",
         modifier = Modifier.padding(all = 8.dp)
     )
-    Test()
+    Test(dirName)
 }
 
 
