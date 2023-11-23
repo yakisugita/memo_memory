@@ -1,8 +1,7 @@
 package net.yakijake.memory
 
-import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -32,10 +31,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -121,7 +121,7 @@ fun SetNav() {
 
 @Composable
 fun TopContent(
-    navController: NavController
+    navController: NavController,
 ) {
     Column {
 //        var count = ""
@@ -164,22 +164,19 @@ fun TopContent(
 
 
 @Composable
-fun Test(dirName : String, modifier: Modifier = Modifier) {
+fun Test(isWide : Boolean, originalBitmap : Bitmap, maskBitmap : Bitmap, modifier: Modifier = Modifier) {
     var sliderPosition by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
-    var scale by remember { mutableStateOf(2f) }
+    var scale by remember { mutableStateOf(1f) }
     var zoom_ by remember { mutableStateOf(0f) }
     var centeroid_ by remember { mutableStateOf(Offset.Zero) }
     var pan_ by remember { mutableStateOf(Offset.Zero) }
+    // 切り抜き型
     var CustomShape by remember { mutableStateOf(GenericShape { size, layoutDirection -> }) }
-    Log.d("Memory_Log_Compare", dirName)
-    val context = LocalContext.current
-    val path = context.filesDir.toString()
-    val fileOriginal = File("$path/memo/$dirName/original.JPG")
-    val fileMask = File("$path/memo/$dirName/mask.JPG")
+
     Image(
-//        painter = painterResource(id = R.drawable.original),
-        bitmap = BitmapFactory.decodeFile(fileOriginal.path).asImageBitmap(),
+//        bitmap = afterResizeOriginal.asImageBitmap(),
+        painter = BitmapPainter(originalBitmap.asImageBitmap()),
         contentDescription = "An Image",
         contentScale = ContentScale.Fit,
         modifier = Modifier
@@ -210,8 +207,8 @@ fun Test(dirName : String, modifier: Modifier = Modifier) {
             }
     )
     Image(
-//        painter = painterResource(id = R.drawable.masked),
-        bitmap = BitmapFactory.decodeFile(fileMask.path).asImageBitmap(),
+        painter = BitmapPainter(maskBitmap.asImageBitmap()),
+//        bitmap = afterResizeMask.asImageBitmap(),
         contentDescription = "An Image",
         contentScale = ContentScale.Fit,
         modifier = Modifier
@@ -230,26 +227,29 @@ fun Test(dirName : String, modifier: Modifier = Modifier) {
 
     Column {
         Text(
-            text = sliderPosition.toString(),
-            modifier = Modifier.padding(all = 8.dp)
-        )
-        Text(
             text = "${offset.x} / $scale = ${(offset.x/scale)}",
             modifier = Modifier.padding(all = 8.dp)
         )
-        Text(
-            text = "${centeroid_.x} , ${centeroid_.y}",
-            modifier = Modifier.padding(all = 8.dp)
-        )
+//        Text(
+//            text = "${centeroid_.x} , ${centeroid_.y}",
+//            modifier = Modifier.padding(all = 8.dp)
+//        )
         Slider(
             value = sliderPosition,
             onValueChange = {
                 sliderPosition = it
                 CustomShape = GenericShape { size, layoutDirection ->
-                    moveTo(0f, 0f)
-                    lineTo(size.width*sliderPosition, 0f)
-                    lineTo(size.width*sliderPosition, size.height)
-                    lineTo(0f, size.height)
+                    if (isWide) {
+                        moveTo(0f, 0f)
+                        lineTo(size.width*sliderPosition, 0f)
+                        lineTo(size.width*sliderPosition, size.height)
+                        lineTo(0f, size.height)
+                    } else {
+                        moveTo(0f, size.height*(1-sliderPosition))
+                        lineTo(size.width, size.height*(1-sliderPosition))
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                    }
                 }
             }
         )
@@ -258,15 +258,57 @@ fun Test(dirName : String, modifier: Modifier = Modifier) {
 
 @Composable
 fun CompareContent(
-    dirName : String,
-    navController: NavController
+    dirName: String,
+    navController: NavController,
 ) {
-    // content
+    Log.d("CompareContent","Test Compare")
     Text(
         text = "Compare",
         modifier = Modifier.padding(all = 8.dp)
     )
-    Test(dirName)
+    // 画像を準備
+    Log.d("Memory_Log_Compare", dirName)
+    val context = LocalContext.current
+    val path = context.filesDir.toString()
+    // 元画像読み込み
+    val fileOriginal = File("$path/memo/$dirName/original.JPG")
+    val beforeResizeOriginal = BitmapFactory.decodeFile(fileOriginal.path)
+    // 解像度に合わせて画像をリサイズ 縦横の長い方が画面と同じ長さ
+    val resizeScale:Double
+    val screenHeight = LocalConfiguration.current.screenHeightDp
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    // ズームできるので、画面解像度よりちょっと多くする
+    val resizeHosei = 1.2
+    // 端末の向き判定
+    val isScreenWide = screenWidth > screenHeight
+    // 縦横長判定
+    val isPhotoWide = beforeResizeOriginal.width > beforeResizeOriginal.height
+    resizeScale = if (isScreenWide) {
+        // 横向き
+        screenWidth.toDouble() / beforeResizeOriginal.width
+    } else {
+        // 縦向き
+        screenHeight.toDouble() / beforeResizeOriginal.height
+    }
+    // リサイズ
+    val afterResizeOriginal = Bitmap.createScaledBitmap(
+        beforeResizeOriginal,
+        (beforeResizeOriginal.width * resizeScale*resizeHosei).toInt(),
+        (beforeResizeOriginal.height*resizeScale*resizeHosei).toInt(),
+        true
+    )
+    // マスク画像も同様
+    val fileMask = File("$path/memo/$dirName/mask.JPG")
+    val beforeResizeMask = BitmapFactory.decodeFile(fileMask.path)
+    // リサイズ
+    val afterResizeMask = Bitmap.createScaledBitmap(
+        beforeResizeMask,
+        (beforeResizeMask.width*resizeScale*resizeHosei).toInt(),
+        (beforeResizeMask.height*resizeScale*resizeHosei).toInt(),
+        true
+    )
+    Log.d("Memory_Log_Resize", "All Resized")
+    Test(isPhotoWide, afterResizeOriginal, afterResizeMask)
 }
 
 
