@@ -297,6 +297,7 @@ fun CompareContent(
         (beforeResizeOriginal.height*resizeScale*resizeHosei).toInt(),
         true
     )
+    beforeResizeOriginal.recycle()
     // マスク画像も同様
     val fileMask = File("$path/memo/$dirName/mask.JPG")
     val beforeResizeMask = BitmapFactory.decodeFile(fileMask.path)
@@ -307,6 +308,7 @@ fun CompareContent(
         (beforeResizeMask.height*resizeScale*resizeHosei).toInt(),
         true
     )
+    beforeResizeMask.recycle()
     Log.d("Memory_Log_Resize", "All Resized")
     Test(isPhotoWide, afterResizeOriginal, afterResizeMask)
 }
