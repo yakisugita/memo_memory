@@ -11,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -22,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,6 +50,7 @@ import java.util.UUID
 class ImportActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 共有されてきた中身を処理
         when {
             intent?.action == Intent.ACTION_SEND_MULTIPLE
                     && intent.type?.startsWith("image/") == true -> {
@@ -61,53 +60,22 @@ class ImportActivity : ComponentActivity() {
                 // Handle other intents, such as being started from the home screen
             }
         }
-//        Log.d("Memory_Log",filesDir.toString())
-//        val path = filesDir.toString()
-//
-//        Log.d("Memory_Log_DirCheck","checking")
-//
-//        if (!File(path, "db").exists()) {
-//            Files.createDirectory(Paths.get("$path/db"))
-//            Log.d("Memory_Log_DirCheck","created db")
-//        }
-//        if (!File(path, "memo").exists()) {
-//            Files.createDirectory(Paths.get("$path/memo"))
-//            Log.d("Memory_Log_DirCheck","created memo")
-//        }
-//
-//        setContent {
-//            MemoryTheme {
-//                // A surface container using the 'background' color from the theme
-//                Surface(
-//                    modifier = Modifier.fillMaxSize(),
-//                    color = MaterialTheme.colorScheme.background
-//                ) {
-////                    Greeting("Android")
-////                    Test()
-//                    PhotoImport()
-//                }
-//            }
-//        }
     }
 
     private fun handleSendMultipleImages(intent: Intent) {
         intent.getParcelableArrayListExtra<Parcelable>(Intent.EXTRA_STREAM)?.let {
             // Update UI to reflect multiple images being shared
+            // Googleフォトから共有された場合はcontent://の形で入っている
             it.forEach {
                 Log.d("ImportActivity",it.toString())
-
-
             }
 
             setContent {
                 MemoryTheme {
-                    // A surface container using the 'background' color from the theme
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-//                    Greeting("Android")
-//                    Test()
                         PhotoImport(it)
                     }
                 }
@@ -116,28 +84,26 @@ class ImportActivity : ComponentActivity() {
     }
 }
 
+// 一部のコンポーネントはこれが必要
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
+    // countが更新されるたびに処理が走る
     var count by remember { mutableStateOf(0) }
     Log.d("PhotoImport", "ArrayLength : ${parcelableList.size}")
     val contentUri = parcelableList[count].toString()
     Log.d("PhotoImport","contentUri : $contentUri")
     val context = LocalContext.current
+    // content://の形式から画像ファイル自体を取得
     val stream : InputStream = context.getContentResolver().openInputStream(contentUri.toUri())!!
     val importImage = BitmapFactory.decodeStream(BufferedInputStream(stream))
-    // 画像を準備
-//    val context = LocalContext.current
-//    val path = context.filesDir.toString()
-    // 元画像読み込み
-    val importFile = File(contentUri)
-//    val importImage = BitmapFactory.decodeFile(importFile.path)
-
+    // 保存名
     val inputValue = rememberSaveable { mutableStateOf("ディレクトリ名") }
-
+    // 指定した保存方法を覚えるList
     val saveState = remember { MutableList(parcelableList.size){""} }
 
     Column {
+        // 画像を表示
         Image(
             painter = BitmapPainter(importImage.asImageBitmap()),
             contentDescription = "An Image",
@@ -165,11 +131,12 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
 
         TextField(
             value = inputValue.value,
-            onValueChange = { inputValue.value = it },// ラムダ式の引数はitで受け取れる
+            onValueChange = { inputValue.value = it },// itはTextFieldに入力された文字列
             label = { /*TODO*/ },
             modifier = Modifier.padding(16.dp)
         )
 
+        // 保存方法指定ボタン
         Button(
             onClick = {
                 if (saveState.contains("original.JPG")) {
@@ -187,7 +154,6 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
         ) {
             Text( text = "元画像保存" )
         }
-
         Button(
             onClick = {
                 if (saveState.contains("mask.JPG")) {
@@ -205,16 +171,17 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
             Text( text = "加工画像保存" )
         }
 
-         Button(
-            onClick = {
-                Log.d("PhotoImport", inputValue.value)
-                saveState.forEach {
-                    if (it == "") {
-                        Log.d("PhotoImport", "saveState : からっぽ。")
-                    } else {
-                        Log.d("PhotoImport", "saveState : $it")
-                    }
-                }
+        // 書き込み処理ボタン
+        Button(
+           onClick = {
+               Log.d("PhotoImport", inputValue.value)
+               saveState.forEach {
+                   if (it == "") {
+                       Log.d("PhotoImport", "saveState : からっぽ。")
+                   } else {
+                       Log.d("PhotoImport", "saveState : $it")
+                   }
+               }
 
                 if (parcelableList.size <= count+1) {
                     Log.d("PhotoImport", "これが最後の画像 保存します")
@@ -242,23 +209,22 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
 
                             Log.d("PhotoImportSave", "count: $cnt")
 
+                            // スキップしたやつは保存しない
                             if (saveState[cnt] != "") {
                                 val contentUri2 = parcelableList[cnt].toString()
-
+                                // ファイル自体を取得
                                 val saveStream : InputStream = context.getContentResolver().openInputStream(contentUri2.toUri())!!
-
                                 val savePath = "$path/$uuid/${saveState[cnt]}"
                                 File(savePath).outputStream().use {
+                                    // 自アプリの領域にコピー
                                     saveStream.copyTo(it)
                                 }
-
                                 Log.d("PhotoImport", "saveState : からっぽ。")
-                                // 保存
                             }
 
                         }
 
-                        Toast.makeText(context, "ファイル書込み完了。", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "ファイル書込み完了", Toast.LENGTH_SHORT).show()
 
                         Log.d("PhotoImport", "CoroutineScope前")
 
@@ -287,36 +253,6 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
                         }
                         Log.d("PhotoImport", "CoroutineScope後")
                     }
-
-//                    if (File(path, inputValue.value).exists()) {
-//                        Log.d("PhotoImport","フォルダが既に存在する")
-//                    } else {
-//                        Files.createDirectory(Paths.get("$path/${inputValue.value}"))
-//                        Log.d("PhotoImport","created memo/${inputValue.value}")
-//
-//                        for (i in 1..parcelableList.size) {
-//                            val cnt = i-1
-//
-//                            Log.d("PhotoImportSave", "count: $cnt")
-//
-//                            if (saveState[cnt] != "") {
-//                                val contentUri2 = parcelableList[cnt].toString()
-//
-//                                val saveStream : InputStream = context.getContentResolver().openInputStream(contentUri2.toUri())!!
-//
-//                                val savePath = "$path/${inputValue.value}/${saveState[cnt]}"
-//                                File(savePath).outputStream().use {
-//                                    saveStream.copyTo(it)
-//                                }
-//
-//                                Log.d("PhotoImport", "saveState : からっぽ。")
-//                                // 保存
-//                            }
-//
-//                        }
-//
-//                        Toast.makeText(context, "全て保存しました。", Toast.LENGTH_SHORT).show()
-//                    }
                 }
             }
         ) {
