@@ -44,6 +44,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import net.yakijake.memory.ui.theme.AppDatabase
+import net.yakijake.memory.ui.theme.Memo
 import net.yakijake.memory.ui.theme.MemoryTheme
 import java.io.File
 import java.nio.file.Files
@@ -53,6 +59,8 @@ import java.nio.file.Paths
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 必要なフォルダを生成
         Log.d("Memory_Log",filesDir.toString())
         val path = filesDir.toString()
 
@@ -74,8 +82,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-//                    Greeting("Android")
-//                    Test()
                     SetNav()
                 }
             }
@@ -84,20 +90,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-@Composable
 fun SetNav() {
+    // ナビゲーション設定
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "topContent") {
-//        composable("profile") { Test(/*...*/) }
+        // トップ画面
         composable("topContent") {
             TopContent(navController = navController)
         }
+        // 画像比較
         composable(
             "compareContent/{dirName}",
             arguments = listOf(
@@ -113,9 +114,6 @@ fun SetNav() {
             val dirName = it.arguments?.getString("dirName")
             CompareContent(dirName!!,navController = navController)
         }
-
-//        composable("friendslist") { FriendsList(/*...*/) }
-        /*...*/
     }
 }
 
@@ -123,36 +121,52 @@ fun SetNav() {
 fun TopContent(
     navController: NavController,
 ) {
-    Column {
-//        var count = ""
+    val context = LocalContext.current
 
-        Text(
-            text = "TopPage",
-            modifier = Modifier.padding(all = 8.dp)
-        )
+    Column {
         Button(
-            onClick = {navController.navigate("compareContent")}
+            onClick = {
+                navController.navigate("compareContent")
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    // DB用意
+                    val db = Room.databaseBuilder(
+                        context,
+                        AppDatabase::class.java, "memo-db"
+                    ).build()
+
+                    // DB全件出力
+                    val memoDao = db.memoDao()
+                    val memoList: List<Memo> = memoDao.getAll()
+                    memoList.forEach {
+                        Log.d("memoList", "uuid:${it.uuid},title:${it.title}")
+                    }
+                }
+            }
         ) {
-            Text( text = "compareに遷移" )
+            Text( text = "DBログ出力" )
         }
 
-        val context = LocalContext.current
+        // スクロールできるやつ
         LazyColumn {
+            // メモ領域の一番上の階層のファイルリストを取得
             val path = context.filesDir.toString()
 
-            val dirlist = File("$path/memo").list()
-            dirlist.forEach {
+            val dirList = File("$path/memo").list()
+            dirList.forEach {
                 if (File("$path/memo", it).isDirectory) {
                     Log.d("Memory_Log_FileList", it)
                 }
             }
 
-            items(dirlist) {
+            // dirListの分だけTextを生成してくれる
+            items(dirList) {
                 Text(
                     text = it,
                     modifier = Modifier
                         .padding(all = 16.dp)
                         .clickable {
+                            // クリックしたらcompareContent(画像比較のComposable)に遷移
                             Log.d("Memory_Log_Click", it)
                             navController.navigate("compareContent/$it")
                         }
@@ -164,32 +178,29 @@ fun TopContent(
 
 
 @Composable
-fun Test(isWide : Boolean, originalBitmap : Bitmap, maskBitmap : Bitmap, modifier: Modifier = Modifier) {
+fun ShowImage(isWide : Boolean, originalBitmap : Bitmap, maskBitmap : Bitmap, modifier: Modifier = Modifier) {
     var sliderPosition by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var scale by remember { mutableStateOf(1f) }
-    var zoom_ by remember { mutableStateOf(0f) }
     var centeroid_ by remember { mutableStateOf(Offset.Zero) }
     var pan_ by remember { mutableStateOf(Offset.Zero) }
     // 切り抜き型
     var CustomShape by remember { mutableStateOf(GenericShape { size, layoutDirection -> }) }
 
     Image(
-//        bitmap = afterResizeOriginal.asImageBitmap(),
         painter = BitmapPainter(originalBitmap.asImageBitmap()),
         contentDescription = "An Image",
         contentScale = ContentScale.Fit,
         modifier = Modifier
             .pointerInput(Unit) {
                 detectTransformGestures(true) { centeroid, pan, zoom, _ ->
-
+                    // ジェスチャー操作を拾って画像に反映
                     scale *= zoom
                     if (scale < 1) scale = 1f
                     if (scale > 10) scale = 10f
                     offset += pan
 
                     pan_ = pan
-                    zoom_ = zoom
                     centeroid_ = centeroid
 //                    CustomShape = GenericShape { size, layoutDirection ->
 //                        moveTo(0f, 0f)
@@ -208,13 +219,9 @@ fun Test(isWide : Boolean, originalBitmap : Bitmap, maskBitmap : Bitmap, modifie
     )
     Image(
         painter = BitmapPainter(maskBitmap.asImageBitmap()),
-//        bitmap = afterResizeMask.asImageBitmap(),
         contentDescription = "An Image",
         contentScale = ContentScale.Fit,
         modifier = Modifier
-//            .size(200.dp)
-//            .height(1000.dp)
-//            .offset((sliderPosition2*100).dp, 0.dp)
             .fillMaxHeight()
             .clip(CustomShape) // 作成したカスタムShapeで切り抜く
             .graphicsLayer {
@@ -226,14 +233,11 @@ fun Test(isWide : Boolean, originalBitmap : Bitmap, maskBitmap : Bitmap, modifie
     )
 
     Column {
+        // 画像画面でオーバーレイ的に出てくるとこ
         Text(
             text = "${offset.x} / $scale = ${(offset.x/scale)}",
             modifier = Modifier.padding(all = 8.dp)
         )
-//        Text(
-//            text = "${centeroid_.x} , ${centeroid_.y}",
-//            modifier = Modifier.padding(all = 8.dp)
-//        )
         Slider(
             value = sliderPosition,
             onValueChange = {
@@ -261,11 +265,8 @@ fun CompareContent(
     dirName: String,
     navController: NavController,
 ) {
+    // トップ画面のテキストクリックして遷移してくる
     Log.d("CompareContent","Test Compare")
-    Text(
-        text = "Compare",
-        modifier = Modifier.padding(all = 8.dp)
-    )
     // 画像を準備
     Log.d("Memory_Log_Compare", dirName)
     val context = LocalContext.current
@@ -278,7 +279,7 @@ fun CompareContent(
     val screenHeight = LocalConfiguration.current.screenHeightDp
     val screenWidth = LocalConfiguration.current.screenWidthDp
     // ズームできるので、画面解像度よりちょっと多くする
-    val resizeHosei = 1.2
+    val resizeHosei = 1.4
     // 端末の向き判定
     val isScreenWide = screenWidth > screenHeight
     // 縦横長判定
@@ -308,9 +309,11 @@ fun CompareContent(
         (beforeResizeMask.height*resizeScale*resizeHosei).toInt(),
         true
     )
+    // メモリ解放
     beforeResizeMask.recycle()
     Log.d("Memory_Log_Resize", "All Resized")
-    Test(isPhotoWide, afterResizeOriginal, afterResizeMask)
+    // 画像表示
+    ShowImage(isPhotoWide, afterResizeOriginal, afterResizeMask)
 }
 
 
@@ -318,8 +321,6 @@ fun CompareContent(
 @Composable
 fun GreetingPreview() {
     MemoryTheme {
-        Greeting("Android")
-//        Test()
         SetNav()
     }
 }
