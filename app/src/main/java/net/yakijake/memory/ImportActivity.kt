@@ -3,6 +3,7 @@ package net.yakijake.memory
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.os.Looper
 import android.os.Parcelable
 import android.util.Log
 import android.widget.Toast
@@ -33,12 +34,19 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import net.yakijake.memory.ui.theme.AppDatabase
+import net.yakijake.memory.ui.theme.Memo
 import net.yakijake.memory.ui.theme.MemoryTheme
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.UUID
 
 
 class ImportActivity : ComponentActivity() {
@@ -197,7 +205,7 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
             Text( text = "加工画像保存" )
         }
 
-        Button(
+         Button(
             onClick = {
                 Log.d("PhotoImport", inputValue.value)
                 saveState.forEach {
@@ -215,12 +223,20 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
 
                     val path = "${context.filesDir}/memo"
 
-                    if (File(path, inputValue.value).exists()) {
-                        Log.d("PhotoImport","フォルダが既に存在する")
-                    } else {
-                        Files.createDirectory(Paths.get("$path/${inputValue.value}"))
-                        Log.d("PhotoImport","created memo/${inputValue.value}")
+                    val memoName = inputValue.value
 
+                    // ディレクトリ名は生成したuuid
+                    val uuid = UUID.randomUUID().toString()
+                    Log.d("PhotoImport", "generated uuid : $uuid")
+
+                    if (File(path, uuid).exists()) {
+                        Log.d("PhotoImport","uuid重複")
+                    } else {
+                        // ディレクトリ作成
+                        Files.createDirectory(Paths.get("$path/$uuid"))
+                        Log.d("PhotoImport","created memo/$uuid")
+
+                        // 選択した画像を全て保存
                         for (i in 1..parcelableList.size) {
                             val cnt = i-1
 
@@ -231,7 +247,7 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
 
                                 val saveStream : InputStream = context.getContentResolver().openInputStream(contentUri2.toUri())!!
 
-                                val savePath = "$path/${inputValue.value}/${saveState[cnt]}"
+                                val savePath = "$path/$uuid/${saveState[cnt]}"
                                 File(savePath).outputStream().use {
                                     saveStream.copyTo(it)
                                 }
@@ -242,8 +258,65 @@ fun PhotoImport(parcelableList : ArrayList<Parcelable>) {
 
                         }
 
-                        Toast.makeText(context, "全て保存しました。", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "ファイル書込み完了。", Toast.LENGTH_SHORT).show()
+
+                        Log.d("PhotoImport", "CoroutineScope前")
+
+                        CoroutineScope(Dispatchers.IO).launch {
+                            // DB用意
+                            val db = Room.databaseBuilder(
+                                context,
+                                AppDatabase::class.java, "memo-db"
+                            ).build()
+
+                            // DBログ出力
+                            val memoDao = db.memoDao()
+
+                            val memoList: List<Memo> = memoDao.getAll()
+                            memoList.forEach {
+                                Log.d("memoList", "uuid:${it.uuid},title:${it.title}")
+                            }
+
+                            // DB書き込み
+                            val query = Memo(uuid,memoName,"","/","","")
+                            memoDao.insertAll(query)
+
+                            Looper.prepare()
+                            Toast.makeText(context, "DB書き込み完了。", Toast.LENGTH_SHORT).show()
+                            Log.d("PhotoImport", "DB書き込み完了")
+                        }
+                        Log.d("PhotoImport", "CoroutineScope後")
                     }
+
+//                    if (File(path, inputValue.value).exists()) {
+//                        Log.d("PhotoImport","フォルダが既に存在する")
+//                    } else {
+//                        Files.createDirectory(Paths.get("$path/${inputValue.value}"))
+//                        Log.d("PhotoImport","created memo/${inputValue.value}")
+//
+//                        for (i in 1..parcelableList.size) {
+//                            val cnt = i-1
+//
+//                            Log.d("PhotoImportSave", "count: $cnt")
+//
+//                            if (saveState[cnt] != "") {
+//                                val contentUri2 = parcelableList[cnt].toString()
+//
+//                                val saveStream : InputStream = context.getContentResolver().openInputStream(contentUri2.toUri())!!
+//
+//                                val savePath = "$path/${inputValue.value}/${saveState[cnt]}"
+//                                File(savePath).outputStream().use {
+//                                    saveStream.copyTo(it)
+//                                }
+//
+//                                Log.d("PhotoImport", "saveState : からっぽ。")
+//                                // 保存
+//                            }
+//
+//                        }
+//
+//                        Toast.makeText(context, "全て保存しました。", Toast.LENGTH_SHORT).show()
+//                    }
                 }
             }
         ) {

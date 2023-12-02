@@ -1,6 +1,9 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -49,7 +52,24 @@ android {
     }
 }
 
+tasks.withType<KotlinJvmCompile>()
+    .configureEach {
+        kotlinOptions {
+            // targetCompatibilityと揃える
+            jvmTarget = JavaVersion.VERSION_1_8.toString()
+        }
+    }
+
+
 dependencies {
+    // Room
+    val roomVersion = "2.5.0"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
+    // optional - Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:$roomVersion")
+
+
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
     implementation("androidx.core:core-ktx:1.9.0")
